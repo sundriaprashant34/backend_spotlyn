@@ -28,6 +28,13 @@ const getDatabaseStatus = () => {
 app.use(cors({ origin: process.env.CLIENT_URL || true }));
 app.use(express.json({ limit: '2mb' }));
 app.use('/uploads', express.static(uploadsDir));
+app.get('/', (_req, res) =>
+  res.json({
+    service: 'Spotlyn API',
+    message: 'Backend is running.',
+    health: '/api/health',
+  })
+);
 app.get('/api/health', (_q, res) =>
   res.json({
     ok: mongoose.connection.readyState === 1,
