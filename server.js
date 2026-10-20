@@ -18,6 +18,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsDir = path.join(__dirname, 'uploads');
 fs.mkdirSync(uploadsDir, { recursive: true });
 const app = express();
+const configuredClientOrigins = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const isAllowedClientOrigin = (origin) =>
+  !origin ||
+  configuredClientOrigins.includes(origin) ||
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
 const getDatabaseStatus = () => {
   const readyState = mongoose.connection.readyState;
   if (readyState === 1) return { connected: true, status: 'connected' };
@@ -25,7 +33,13 @@ const getDatabaseStatus = () => {
   if (readyState === 3) return { connected: false, status: 'disconnecting' };
   return { connected: false, status: 'disconnected' };
 };
-app.use(cors({ origin: process.env.CLIENT_URL || true }));
+app.use(
+  cors({
+    origin(origin, callback) {
+      callback(null, isAllowedClientOrigin(origin));
+    },
+  })
+);
 app.use(express.json({ limit: '2mb' }));
 app.use('/uploads', express.static(uploadsDir));
 app.get('/', (_req, res) =>
