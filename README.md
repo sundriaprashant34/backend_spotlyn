@@ -62,7 +62,7 @@ BREVO_FROM_NAME=Spotlyn
 
 Create a Cloudinary account and copy these three values from the Cloudinary Console. Complaint and lost/found report images (up to 5 MB) are stored in the `spotlyn` Cloudinary folder. Keep the API secret private and only in `backend/.env`.
 Create a Groq API key and keep it private in `backend/.env`. The Spotlyn AI chat endpoint uses Groq and requires `GROQ_API_KEY`; `GROQ_MODEL` is optional.
-Create a Brevo API key and verify the sender address in Brevo. Student welcome emails are sent after a student's first successful login. Keep `BREVO_API_KEY` private in `backend/.env`.
+Create a Brevo API key and verify the sender address in Brevo. Student welcome emails are sent when a student registers or signs in for the first time; failed sends are retried on a later login. Keep `BREVO_API_KEY` private in `backend/.env`.
 
 Admin and staff seed accounts are optional. Set their email and password variables in `backend/.env` to create them. Use strong, private passwords outside development.
 
@@ -142,8 +142,11 @@ Push this project as one GitHub repository. The `backend` and `frontend` folders
    - `JWT_SECRET`: a long, private random value.
    - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
    - `CLIENT_URL`: the deployed Vercel frontend origin, for example `https://your-project.vercel.app`.
+   - `BREVO_API_KEY`, `BREVO_FROM_EMAIL`, and optionally `BREVO_FROM_NAME`: use a Brevo API key and a sender address verified in Brevo. These must be set in Render; the local `backend/.env` file is not deployed.
    - Optional: `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `STAFF_EMAIL`, `STAFF_PASSWORD`.
 5. After deployment, verify `https://<your-render-service>.onrender.com/api/health`.
+
+Student welcome emails are attempted at registration and on subsequent logins until Brevo accepts the message. Check the Render service logs for `Brevo accepted` or a configuration/provider error. An accepted message may still be filtered or deferred by the recipient's mail provider.
 
 ### Vercel (frontend)
 

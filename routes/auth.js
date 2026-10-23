@@ -17,6 +17,19 @@ const safe = (u) => ({
 });
 const token = (u) =>
   jwt.sign({ id: u._id, role: u.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+const sendWelcomeEmailIfNeeded = async (user) => {
+  if (user.role !== 'STUDENT' || user.welcomeEmailSent) return;
+
+  try {
+    const sent = await sendFirstLoginWelcomeEmail(user);
+    if (sent) {
+      user.welcomeEmailSent = true;
+      await user.save();
+    }
+  } catch (error) {
+    console.error('Failed to send first-login welcome email:', error);
+  }
+};
 r.post('/register', async (req, res) => {
   try {
     const { name, email, phone, department, password } = req.body;
@@ -33,6 +46,7 @@ r.post('/register', async (req, res) => {
       passwordHash: hash,
       role: 'STUDENT',
     });
+    await sendWelcomeEmailIfNeeded(u);
     res.status(201).json({ token: token(u), user: safe(u) });
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -51,17 +65,7 @@ r.post('/login', async (req, res) => {
     u.loginCount += 1;
     await u.save();
 
-    if (u.role === 'STUDENT' && !u.welcomeEmailSent) {
-      try {
-        const sent = await sendFirstLoginWelcomeEmail(u);
-        if (sent) {
-          u.welcomeEmailSent = true;
-          await u.save();
-        }
-      } catch (error) {
-        console.error('Failed to send first-login welcome email:', error.message);
-      }
-    }
+    await sendWelcomeEmailIfNeeded(u);
 
     res.json({ token: token(u), user: safe(u) });
   } catch (e) {

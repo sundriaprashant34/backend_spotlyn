@@ -11,11 +11,23 @@ const escapeHtml = (value) =>
   });
 
 export async function sendFirstLoginWelcomeEmail(user) {
-  const apiKey = process.env.BREVO_API_KEY;
-  const senderEmail = process.env.BREVO_FROM_EMAIL;
+  const apiKey = process.env.BREVO_API_KEY?.trim();
+  const senderEmail = process.env.BREVO_FROM_EMAIL?.trim();
+  const missingConfiguration = [];
 
-  if (!apiKey || apiKey === 'your_brevo_api_key_here' || !senderEmail) {
-    console.warn('Brevo is not configured; first-login welcome email was skipped.');
+  if (!apiKey || /^(your_|replace_|<)/i.test(apiKey))
+    missingConfiguration.push('BREVO_API_KEY');
+  if (
+    !senderEmail ||
+    /^(your_|replace_|<)/i.test(senderEmail) ||
+    /@example\.(com|org|net)$/i.test(senderEmail)
+  )
+    missingConfiguration.push('BREVO_FROM_EMAIL');
+
+  if (missingConfiguration.length) {
+    console.warn(
+      `Brevo is not configured (${missingConfiguration.join(', ')}); first-login welcome email was skipped.`
+    );
     return false;
   }
 
@@ -113,5 +125,6 @@ export async function sendFirstLoginWelcomeEmail(user) {
     throw new Error(`Brevo returned HTTP ${response.status}: ${details}`);
   }
 
+  console.info('Brevo accepted a first-login welcome email.');
   return true;
 }
