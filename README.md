@@ -55,10 +55,14 @@ CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 GROQ_API_KEY=your_groq_api_key
 GROQ_MODEL=openai/gpt-oss-20b
+BREVO_API_KEY=your_brevo_api_key
+BREVO_FROM_EMAIL=your_verified_sender@example.com
+BREVO_FROM_NAME=Spotlyn
 ```
 
 Create a Cloudinary account and copy these three values from the Cloudinary Console. Complaint and lost/found report images (up to 5 MB) are stored in the `spotlyn` Cloudinary folder. Keep the API secret private and only in `backend/.env`.
 Create a Groq API key and keep it private in `backend/.env`. The Spotlyn AI chat endpoint uses Groq and requires `GROQ_API_KEY`; `GROQ_MODEL` is optional.
+Create a Brevo API key and verify the sender address in Brevo. Student welcome emails are sent after a student's first successful login. Keep `BREVO_API_KEY` private in `backend/.env`.
 
 Admin and staff seed accounts are optional. Set their email and password variables in `backend/.env` to create them. Use strong, private passwords outside development.
 
