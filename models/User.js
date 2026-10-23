@@ -12,6 +12,7 @@ const schema = new mongoose.Schema(
     active: { type: Boolean, default: true },
     lastLoginAt: { type: Date, default: null },
     loginCount: { type: Number, default: 0, min: 0 },
+    welcomeEmailSent: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

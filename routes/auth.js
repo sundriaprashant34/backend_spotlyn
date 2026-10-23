@@ -47,14 +47,17 @@ r.post('/login', async (req, res) => {
     const u = await User.findOne({ email: normalizedIdentifier.toLowerCase() });
     if (!u || !u.active || !(await bcrypt.compare(password, u.passwordHash)))
       return res.status(401).json({ message: 'Invalid login details' });
-    const isFirstLogin = u.loginCount === 0;
     u.lastLoginAt = new Date();
     u.loginCount += 1;
     await u.save();
 
-    if (isFirstLogin && u.role === 'STUDENT') {
+    if (u.role === 'STUDENT' && !u.welcomeEmailSent) {
       try {
-        await sendFirstLoginWelcomeEmail(u);
+        const sent = await sendFirstLoginWelcomeEmail(u);
+        if (sent) {
+          u.welcomeEmailSent = true;
+          await u.save();
+        }
       } catch (error) {
         console.error('Failed to send first-login welcome email:', error.message);
       }
