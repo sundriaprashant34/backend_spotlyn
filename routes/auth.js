@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { auth } from '../middleware/auth.js';
+import { sendFirstLoginWelcomeEmail } from '../utils/brevo.js';
 const r = express.Router();
 const safe = (u) => ({
   id: u._id,
@@ -46,9 +47,19 @@ r.post('/login', async (req, res) => {
     const u = await User.findOne({ email: normalizedIdentifier.toLowerCase() });
     if (!u || !u.active || !(await bcrypt.compare(password, u.passwordHash)))
       return res.status(401).json({ message: 'Invalid login details' });
+    const isFirstLogin = u.loginCount === 0;
     u.lastLoginAt = new Date();
     u.loginCount += 1;
     await u.save();
+
+    if (isFirstLogin && u.role === 'STUDENT') {
+      try {
+        await sendFirstLoginWelcomeEmail(u);
+      } catch (error) {
+        console.warn('Failed to send first-login email:', error.message);
+      }
+    }
+
     res.json({ token: token(u), user: safe(u) });
   } catch (e) {
     res.status(500).json({ message: e.message });
