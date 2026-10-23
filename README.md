@@ -53,9 +53,12 @@ CLIENT_URL=http://localhost:5173
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
+GEMINI_API_KEY=your_google_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
 ```
 
 Create a Cloudinary account and copy these three values from the Cloudinary Console. Complaint and lost/found report images (up to 5 MB) are stored in the `spotlyn` Cloudinary folder. Keep the API secret private and only in `backend/.env`.
+Create a Gemini API key in Google AI Studio and keep it private in `backend/.env`. The Spotlyn AI chat endpoint uses Gemini and requires `GEMINI_API_KEY`; `GEMINI_MODEL` is optional.
 
 Admin and staff seed accounts are optional. Set their email and password variables in `backend/.env` to create them. Use strong, private passwords outside development.
 
@@ -110,6 +113,7 @@ Admins can edit a staff member's name and designation, and optionally set a new 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `GET /api/auth/me`
+- `POST /api/ai/chat`
 - `POST /api/complaints`
 - `GET /api/complaints`
 - `GET /api/complaints/mine`
