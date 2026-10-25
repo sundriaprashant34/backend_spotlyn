@@ -2,8 +2,34 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { auth, roles } from '../middleware/auth.js';
+import { imageUpload } from '../middleware/imageUpload.js';
 import { STAFF_DESIGNATIONS, staffEmailCandidate } from '../utils/staff.js';
 const r = express.Router();
+r.put('/profile', auth, imageUpload.single('profilePhoto'), async (req, res) => {
+  try {
+    const updates = {};
+    if (req.file?.path) updates.profilePhoto = req.file.path;
+    if (typeof req.body.name === 'string') {
+      if (!req.body.name.trim()) return res.status(400).json({ message: 'Name cannot be empty.' });
+      updates.name = req.body.name.trim();
+    }
+    if (typeof req.body.phone === 'string') updates.phone = req.body.phone.trim();
+    if (!Object.keys(updates).length)
+      return res
+        .status(400)
+        .json({ message: 'Choose a profile photo or update your profile details.' });
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).select('-passwordHash');
+    if (!user) return res.status(404).json({ message: 'User account not found.' });
+    res.json({ user });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
 async function uniqueStaffEmail(title, name, excludeId) {
   const existingUserFilter = excludeId ? { _id: { $ne: excludeId } } : {};
   for (let attempt = 0; ; attempt += 1) {

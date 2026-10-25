@@ -63,12 +63,14 @@ app.use('/api/users', userRoutes);
 app.use('/api/lost-found', lostFoundRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
-app.use((err, _q, res, _n) => {
+app.use((err, req, res, _n) => {
   const status = err instanceof multer.MulterError ? 400 : err.statusCode || 500;
   const message =
     err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
       ? 'Image must be 5 MB or smaller.'
       : err.message || 'Server error';
+  if (req.originalUrl.startsWith('/api/users/profile'))
+    console.error(`Profile photo upload failed (HTTP ${status}): ${message}`);
   res.status(status).json({ message });
 });
 async function seedUser({ email, password, ...user }) {

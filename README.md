@@ -13,14 +13,14 @@ Spotlyn is a full-stack college campus platform for reporting, assigning, tracki
 ## Roles
 
 - **Student:** register/login, automatic enrollment number, submit complaints, upload images, track status, report lost/found items.
-- **Staff:** see assigned complaints, start work, mark resolved.
+- **Staff:** review assigned complaints with a selected approval/rejection reason, see full report details, start work, and mark resolved.
 - **Admin:** dashboard, verify/reject, assign department/staff, manage staff accounts, monitor complaints and statistics.
 
 ## Complaint flow
 
-`Submitted → Verified → Assigned → In Progress → Resolved`
+`Submitted → Verified → Assigned → Approved → In Progress → Resolved`
 
-Rejected complaints use `Rejected` status.
+Assigned staff must approve a complaint with a reason before work starts, or reject it with a reason. Rejected complaints use `Rejected` status.
 
 ## Notifications
 
@@ -62,7 +62,7 @@ BREVO_FROM_NAME=Spotlyn
 
 Create a Cloudinary account and copy these three values from the Cloudinary Console. Complaint and lost/found report images (up to 5 MB) are stored in the `spotlyn` Cloudinary folder. Keep the API secret private and only in `backend/.env`.
 Create a Groq API key and keep it private in `backend/.env`. The Spotlyn AI chat endpoint uses Groq and requires `GROQ_API_KEY`; `GROQ_MODEL` is optional.
-Create a Brevo API key and verify the sender address in Brevo. Student welcome emails are sent when a student registers or signs in for the first time; failed sends are retried on a later login. Keep `BREVO_API_KEY` private in `backend/.env`.
+Create a Brevo API key and verify the sender address in Brevo. Student registration requires an emailed OTP; the welcome email is sent after the OTP is verified, with failed welcome sends retried at a later login. Keep `BREVO_API_KEY` private in `backend/.env`.
 
 Admin and staff seed accounts are optional. Set their email and password variables in `backend/.env` to create them. Use strong, private passwords outside development.
 

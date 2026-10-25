@@ -6,6 +6,7 @@ import Notification from '../models/Notification.js';
 import { auth, roles } from '../middleware/auth.js';
 import { imageUpload } from '../middleware/imageUpload.js';
 import { generateComplaintId } from '../utils/counters.js';
+import { APPROVAL_REASONS, REJECTION_REASONS } from '../../shared/complaintReview.js';
 const r = express.Router();
 const hist = async (c, action, oldStatus, newStatus, by, remark = '') =>
   ComplaintHistory.create({
@@ -57,14 +58,14 @@ r.get('/', auth, async (req, res) => {
         : {};
   res.json(
     await Complaint.find(filter)
-      .populate('student', 'name email')
+      .populate('student', 'name email phone department')
       .populate('assignedStaff', 'name email staffDepartment')
       .sort('-createdAt')
   );
 });
 r.get('/:id', auth, async (req, res) => {
   const c = await Complaint.findById(req.params.id)
-    .populate('student', 'name email')
+    .populate('student', 'name email phone department')
     .populate('assignedStaff', 'name email staffDepartment');
   if (!c) return res.status(404).json({ message: 'Complaint not found' });
   if (req.user.role === 'STUDENT' && String(c.student._id) !== String(req.user._id))
@@ -104,9 +105,50 @@ r.put('/:id/assign', auth, roles('ADMIN'), async (req, res) => {
   c.assignedDepartment = req.body.department || staff.staffDepartment;
   c.assignedStaff = staff._id;
   c.status = 'Assigned';
+  c.staffDecisionReason = '';
+  c.staffDecisionDetails = '';
   await c.save();
   await hist(c, 'Complaint assigned', old, 'Assigned', req.user._id, c.assignedDepartment);
   await notify(c, 'Complaint assigned', `${c.complaintId} has been assigned to ${staff.name}.`);
+  res.json(c);
+});
+r.put('/:id/review', auth, roles('STAFF'), async (req, res) => {
+  const c = await Complaint.findById(req.params.id);
+  if (!c) return res.status(404).json({ message: 'Complaint not found' });
+  if (String(c.assignedStaff) !== String(req.user._id))
+    return res.status(403).json({ message: 'Access denied' });
+  if (c.status !== 'Assigned')
+    return res.status(409).json({ message: 'Only assigned complaints can be reviewed.' });
+
+  const { decision, reason, details } = req.body;
+  const isApproval = decision === 'approve';
+  const reasons = isApproval ? APPROVAL_REASONS : REJECTION_REASONS;
+  if ((!isApproval && decision !== 'reject') || !reasons.includes(reason))
+    return res.status(400).json({ message: 'Choose a valid decision and reason.' });
+  if (reason === 'Other' && (typeof details !== 'string' || !details.trim()))
+    return res.status(400).json({ message: 'Please provide details when selecting Other.' });
+  if (details !== undefined && (typeof details !== 'string' || details.length > 500))
+    return res.status(400).json({ message: 'Additional details must be 500 characters or fewer.' });
+
+  const old = c.status;
+  c.status = isApproval ? 'Approved' : 'Rejected';
+  c.staffDecisionReason = reason;
+  c.staffDecisionDetails = details?.trim() || '';
+  await c.save();
+  const remark = [reason, c.staffDecisionDetails].filter(Boolean).join(': ');
+  await hist(
+    c,
+    isApproval ? 'Complaint approved by staff' : 'Complaint rejected by staff',
+    old,
+    c.status,
+    req.user._id,
+    remark
+  );
+  await notify(
+    c,
+    `Complaint ${c.status}`,
+    `${c.complaintId} was ${c.status.toLowerCase()} by staff: ${remark}`
+  );
   res.json(c);
 });
 r.put('/:id/status', auth, async (req, res) => {
@@ -119,6 +161,14 @@ r.put('/:id/status', auth, async (req, res) => {
   const allowed = ['Assigned', 'In Progress', 'Resolved'];
   if (!allowed.includes(req.body.status))
     return res.status(400).json({ message: 'Invalid status' });
+  if (
+    req.user.role === 'STAFF' &&
+    !(
+      (req.body.status === 'In Progress' && ['Assigned', 'Approved'].includes(c.status)) ||
+      (req.body.status === 'Resolved' && c.status === 'In Progress')
+    )
+  )
+    return res.status(409).json({ message: 'This status change is not allowed.' });
   const old = c.status;
   c.status = req.body.status;
   c.resolutionRemark = req.body.resolutionRemark || c.resolutionRemark;
