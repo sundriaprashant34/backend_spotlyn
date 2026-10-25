@@ -136,7 +136,7 @@ Push this project as one GitHub repository. The `backend` and `frontend` folders
 
 1. Create a **Web Service** from the GitHub repository.
 2. Set **Root Directory** to `backend`.
-3. Use **Build Command** `npm ci --omit=dev --workspaces=false` and **Start Command** `npm start`.
+3. Use **Build Command** `npm ci --omit=dev --workspaces=false` and **Start Command** `npm start`. Do not use `npm run dev` on Render; it is a file-watching development command.
 4. Add these environment variables in Render (do not upload `.env`):
    - `MONGO_URI`: your MongoDB Atlas connection string; allow Render's outbound IPs in Atlas, or configure Atlas network access as appropriate.
    - `JWT_SECRET`: a long, private random value.

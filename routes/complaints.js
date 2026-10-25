@@ -6,7 +6,7 @@ import Notification from '../models/Notification.js';
 import { auth, roles } from '../middleware/auth.js';
 import { imageUpload } from '../middleware/imageUpload.js';
 import { generateComplaintId } from '../utils/counters.js';
-import { APPROVAL_REASONS, REJECTION_REASONS } from '../../shared/complaintReview.js';
+import { APPROVAL_REASONS, REJECTION_REASONS } from '../utils/complaintReview.js';
 const r = express.Router();
 const hist = async (c, action, oldStatus, newStatus, by, remark = '') =>
   ComplaintHistory.create({
