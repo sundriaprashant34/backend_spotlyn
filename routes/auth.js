@@ -5,7 +5,7 @@ import { createHash, randomBytes, randomInt, timingSafeEqual } from 'crypto';
 import User from '../models/User.js';
 import RegistrationOtp from '../models/RegistrationOtp.js';
 import { auth } from '../middleware/auth.js';
-import { sendFirstLoginWelcomeEmail, sendRegistrationOtpEmail } from '../utils/brevo.js';
+import { sendRegistrationOtpEmail } from '../utils/brevo.js';
 const r = express.Router();
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_RESEND_DELAY_MS = 60 * 1000;
@@ -24,35 +24,6 @@ const safe = (u) => ({
 });
 const token = (u) =>
   jwt.sign({ id: u._id, role: u.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-const sendWelcomeEmailIfNeeded = async (user) => {
-  console.info('Checking student welcome email eligibility.', {
-    role: user.role,
-    alreadySent: user.welcomeEmailSent,
-  });
-  if (user.role !== 'STUDENT') {
-    console.info('Skipping welcome email for non-student account.');
-    return;
-  }
-  if (!user.emailVerified) {
-    console.info('Skipping welcome email because the student email is not verified.');
-    return;
-  }
-  if (user.welcomeEmailSent) {
-    console.info('Skipping welcome email because it was already accepted.');
-    return;
-  }
-
-  try {
-    const sent = await sendFirstLoginWelcomeEmail(user);
-    if (sent) {
-      user.welcomeEmailSent = true;
-      await user.save();
-      console.info('Student welcome email status saved.');
-    }
-  } catch (error) {
-    console.error('Failed to send first-login welcome email:', error);
-  }
-};
 r.post('/register', async (req, res) => {
   try {
     const { name, email, phone, department, password } = req.body;
@@ -160,7 +131,6 @@ r.post('/register/verify', async (req, res) => {
       emailVerified: true,
     });
     await pending.deleteOne();
-    await sendWelcomeEmailIfNeeded(user);
     res.status(201).json({ token: token(user), user: safe(user) });
   } catch (error) {
     if (error.code === 11000) return res.status(409).json({ message: 'Email already registered' });
@@ -179,8 +149,6 @@ r.post('/login', async (req, res) => {
     u.lastLoginAt = new Date();
     u.loginCount += 1;
     await u.save();
-
-    await sendWelcomeEmailIfNeeded(u);
 
     res.json({ token: token(u), user: safe(u) });
   } catch (e) {
