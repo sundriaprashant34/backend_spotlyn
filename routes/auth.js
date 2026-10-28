@@ -16,6 +16,7 @@ const safe = (u) => ({
   name: u.name,
   email: u.email,
   phone: u.phone,
+  sharePhoneForHandover: u.sharePhoneForHandover,
   profilePhoto: u.profilePhoto,
   department: u.department,
   role: u.role,

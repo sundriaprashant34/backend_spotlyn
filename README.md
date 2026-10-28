@@ -24,7 +24,23 @@ Assigned staff must approve a complaint with a reason before work starts, or rej
 
 ## Notifications
 
-Complaint verification, assignment, and status changes create in-app notifications.
+Complaint verification, assignment, and status changes create in-app notifications. Lost & Found
+report reviews, claims, and handover confirmations also create in-app notifications, available from
+the **Notifications** page.
+
+## Lost & Found workflow
+
+Students submit lost or found reports; new reports remain private to their reporter and admins until
+an admin approves them. The Lost Item page lists possible found matches, and the Found Item page
+lists possible lost matches. Similar category, item name, and date reports appear first.
+
+Students can submit a claim with identifying details. Admins review and approve or reject claims.
+After approval, the relevant students can see each other's names and can see phone numbers only
+when the number owner has enabled **Share my phone for approved item handovers** in their profile.
+Phone numbers are never included on public item cards. The owner receives a 15-minute one-time
+handover code in notifications and shares it with the finder at the physical handover. The finder
+enters that code, and the owner separately confirms receipt; the item is marked returned only
+after both checks pass.
 
 ## Setup
 
@@ -99,6 +115,7 @@ npm run fullstack
 - `/my-reports`
 - `/lost-item`
 - `/found-item`
+- `/notifications`
 - `/profile`
 - `/admin`
 - `/admin/staff`
@@ -127,6 +144,16 @@ Admins can edit a staff member's name and designation, and optionally set a new 
 - `PUT /api/complaints/:id/status`
 - `POST /api/lost-found/lost`
 - `POST /api/lost-found/found`
+- `GET /api/lost-found/lost`
+- `GET /api/lost-found/found`
+- `PUT /api/lost-found/:type/:id/review` (admin)
+- `POST /api/lost-found/:type/:id/claims`
+- `GET /api/lost-found/claims/mine`
+- `GET /api/lost-found/claims` (admin)
+- `PUT /api/lost-found/claims/:id/review` (admin)
+- `POST /api/lost-found/claims/:id/confirm-handover`
+- `GET /api/notifications`
+- `PUT /api/notifications/:id/read`
 
 ## Deploy from GitHub
 

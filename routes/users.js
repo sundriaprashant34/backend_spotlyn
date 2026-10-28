@@ -14,6 +14,8 @@ r.put('/profile', auth, imageUpload.single('profilePhoto'), async (req, res) => 
       updates.name = req.body.name.trim();
     }
     if (typeof req.body.phone === 'string') updates.phone = req.body.phone.trim();
+    if (typeof req.body.sharePhoneForHandover === 'boolean')
+      updates.sharePhoneForHandover = req.body.sharePhoneForHandover;
     if (!Object.keys(updates).length)
       return res
         .status(400)

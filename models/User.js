@@ -4,6 +4,7 @@ const schema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, default: '' },
+    sharePhoneForHandover: { type: Boolean, default: false },
     profilePhoto: { type: String, default: '' },
     passwordHash: { type: String, required: true },
     department: { type: String, default: 'Computer Science' },

@@ -13,6 +13,7 @@ import userRoutes from './routes/users.js';
 import lostFoundRoutes from './routes/lostfound.js';
 import adminRoutes from './routes/admin.js';
 import aiRoutes from './routes/ai.js';
+import notificationRoutes from './routes/notifications.js';
 import User from './models/User.js';
 import Department from './models/Department.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -63,6 +64,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/lost-found', lostFoundRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use((err, req, res, _n) => {
   const status = err instanceof multer.MulterError ? 400 : err.statusCode || 500;
   const message =

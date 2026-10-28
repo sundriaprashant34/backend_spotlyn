@@ -9,6 +9,9 @@ const schema = new mongoose.Schema(
     date: Date,
     image: String,
     status: { type: String, enum: ['Open', 'Matched', 'Resolved'], default: 'Open' },
+    reviewStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'] },
+    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    reviewedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
