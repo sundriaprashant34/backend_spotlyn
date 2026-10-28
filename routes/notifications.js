@@ -5,7 +5,14 @@ import { auth } from '../middleware/auth.js';
 const r = express.Router();
 
 r.get('/', auth, async (req, res) =>
-  res.json(await Notification.find({ user: req.user._id }).sort('-createdAt').limit(100))
+  res.json(
+    await Notification.find({
+      user: req.user._id,
+      title: { $nin: ['Handover verification code', 'New handover verification code'] },
+    })
+      .sort('-createdAt')
+      .limit(100)
+  )
 );
 
 r.put('/:id/read', auth, async (req, res) => {

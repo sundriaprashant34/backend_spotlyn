@@ -1,5 +1,4 @@
 import express from 'express';
-import { createHmac, randomInt, timingSafeEqual } from 'crypto';
 import LostItem from '../models/LostItem.js';
 import FoundItem from '../models/FoundItem.js';
 import LostFoundClaim from '../models/LostFoundClaim.js';
@@ -10,9 +9,6 @@ import { imageUpload } from '../middleware/imageUpload.js';
 const r = express.Router();
 const modelFor = (type) => (type === 'lost' ? LostItem : type === 'found' ? FoundItem : null);
 const modelNameFor = (type) => (type === 'lost' ? 'LostItem' : 'FoundItem');
-const createHandoverCode = () => String(randomInt(0, 1000000)).padStart(6, '0');
-const hashHandoverCode = (code) =>
-  createHmac('sha256', process.env.JWT_SECRET).update(code).digest('hex');
 
 const sendNotification = (user, title, message) => Notification.create({ user, title, message });
 
@@ -112,9 +108,8 @@ for (const type of ['lost', 'found']) {
   });
 }
 
-r.put('/:type/:id/review', auth, roles('ADMIN'), async (req, res) => {
-  const model = modelFor(req.params.type);
-  if (!model) return res.status(400).json({ message: 'Invalid item type' });
+const reviewReport = (type) => async (req, res) => {
+  const model = modelFor(type);
   const { decision } = req.body;
   if (!['approve', 'reject'].includes(decision))
     return res.status(400).json({ message: 'Choose approve or reject.' });
@@ -137,11 +132,14 @@ r.put('/:type/:id/review', auth, roles('ADMIN'), async (req, res) => {
   await sendNotification(
     item.reporter,
     `Lost & Found report ${item.reviewStatus.toLowerCase()}`,
-    `Your ${req.params.type} item report for "${item.itemName}" was ${item.reviewStatus.toLowerCase()} by an administrator.`
+    `Your ${type} item report for "${item.itemName}" was ${item.reviewStatus.toLowerCase()} by an administrator.`
   );
   await model.populate(item, { path: 'reporter', select: 'name email phone' });
   res.json(item);
-});
+};
+
+r.put('/lost/:id/review', auth, roles('ADMIN'), reviewReport('lost'));
+r.put('/found/:id/review', auth, roles('ADMIN'), reviewReport('found'));
 
 r.put('/:type/:id/status', auth, roles('ADMIN'), async (req, res) => {
   const model = modelFor(req.params.type);
@@ -265,18 +263,6 @@ r.put('/claims/:id/review', auth, roles('ADMIN'), async (req, res) => {
     await modelFor(claim.itemType).findByIdAndUpdate(claim.item._id, { status: 'Matched' });
   const owner = claim.itemType === 'found' ? claim.claimant : claim.item.reporter;
   const finder = claim.itemType === 'found' ? claim.item.reporter : claim.claimant;
-  let handoverCode = '';
-  if (decision === 'approve') {
-    handoverCode = createHandoverCode();
-    await LostFoundClaim.findByIdAndUpdate(claim._id, {
-      $set: {
-        handoverOtpHash: hashHandoverCode(handoverCode),
-        handoverOtpExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
-        handoverOtpSentAt: new Date(),
-        handoverOtpAttempts: 0,
-      },
-    });
-  }
   const message =
     decision === 'approve'
       ? `The claim for "${claim.item.itemName}" was approved. You can now coordinate the handover in Lost & Found.`
@@ -292,47 +278,9 @@ r.put('/claims/:id/review', auth, roles('ADMIN'), async (req, res) => {
       `Claim ${decision === 'approve' ? 'approved' : 'rejected'}`,
       message
     ),
-    ...(handoverCode
-      ? [
-          sendNotification(
-            owner._id,
-            'Handover verification code',
-            `Your one-time code for "${claim.item.itemName}" is ${handoverCode}. Share it with the finder only when you receive the item. It expires in 15 minutes.`
-          ),
-        ]
-      : []),
   ]);
   const updatedClaim = await populatedClaimQuery(LostFoundClaim.findById(reviewedClaim._id));
   res.json(serializeClaim(updatedClaim, { _id: 'admin' }, true));
-});
-
-r.post('/claims/:id/handover-code', auth, roles('STUDENT'), async (req, res) => {
-  const claim = await populatedClaimQuery(LostFoundClaim.findById(req.params.id));
-  if (!claim) return res.status(404).json({ message: 'Claim not found.' });
-  if (claim.status !== 'Approved' || claim.finderConfirmed)
-    return res.status(409).json({ message: 'A new code is not available for this handover.' });
-  const owner = claim.itemType === 'found' ? claim.claimant : claim.item.reporter;
-  if (String(owner._id) !== String(req.user._id))
-    return res.status(403).json({ message: 'Only the item owner can request a new code.' });
-  if (claim.handoverOtpSentAt && Date.now() - claim.handoverOtpSentAt.getTime() < 60 * 1000)
-    return res
-      .status(429)
-      .json({ message: 'Please wait a minute before requesting another code.' });
-  const code = createHandoverCode();
-  await LostFoundClaim.findByIdAndUpdate(claim._id, {
-    $set: {
-      handoverOtpHash: hashHandoverCode(code),
-      handoverOtpExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
-      handoverOtpSentAt: new Date(),
-      handoverOtpAttempts: 0,
-    },
-  });
-  await sendNotification(
-    owner._id,
-    'New handover verification code',
-    `Your new one-time code for "${claim.item.itemName}" is ${code}. Share it with the finder only when you receive the item. It expires in 15 minutes.`
-  );
-  res.json({ message: 'A new handover code was sent to your notifications.' });
 });
 
 r.post('/claims/:id/confirm-handover', auth, roles('STUDENT'), async (req, res) => {
@@ -349,55 +297,9 @@ r.post('/claims/:id/confirm-handover', auth, roles('STUDENT'), async (req, res) 
   if (!isOwner && !isFinder)
     return res.status(403).json({ message: 'Only the owner or finder can confirm this handover.' });
   if (currentClaim.status === 'Returned') return res.json(serializeClaim(currentClaim, req.user));
-  let finderCodeVerified = false;
-  if (isFinder && !currentClaim.finderConfirmed) {
-    const providedCode = typeof req.body.code === 'string' ? req.body.code.trim() : '';
-    const storedHash = currentClaim.handoverOtpHash;
-    const expiresAt = currentClaim.handoverOtpExpiresAt?.getTime();
-    const providedHash = /^\d{6}$/.test(providedCode) ? hashHandoverCode(providedCode) : '';
-    const matches =
-      storedHash &&
-      providedHash &&
-      expiresAt > Date.now() &&
-      timingSafeEqual(Buffer.from(storedHash, 'hex'), Buffer.from(providedHash, 'hex'));
-    if (!matches) {
-      const attempts = currentClaim.handoverOtpAttempts + 1;
-      if (attempts >= 5) {
-        await LostFoundClaim.findByIdAndUpdate(currentClaim._id, {
-          $set: {
-            handoverOtpHash: '',
-            handoverOtpExpiresAt: null,
-            handoverOtpAttempts: 0,
-          },
-        });
-      } else {
-        await LostFoundClaim.findByIdAndUpdate(currentClaim._id, {
-          $inc: { handoverOtpAttempts: 1 },
-        });
-      }
-      return res.status(400).json({
-        message:
-          expiresAt <= Date.now()
-            ? 'The handover code expired. Ask the owner to send a new one.'
-            : 'The handover code is incorrect or expired.',
-      });
-    }
-    finderCodeVerified = true;
-  }
   const claim = await LostFoundClaim.findByIdAndUpdate(
     currentClaim._id,
-    {
-      $set: {
-        [isOwner ? 'ownerConfirmed' : 'finderConfirmed']: true,
-        ...(finderCodeVerified
-          ? {
-              handoverOtpHash: '',
-              handoverOtpExpiresAt: null,
-              handoverOtpAttempts: 0,
-            }
-          : {}),
-      },
-    },
+    { $set: { [isOwner ? 'ownerConfirmed' : 'finderConfirmed']: true } },
     { new: true }
   );
   let completedClaim = null;

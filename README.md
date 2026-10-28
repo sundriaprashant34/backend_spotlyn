@@ -37,10 +37,8 @@ lists possible lost matches. Similar category, item name, and date reports appea
 Students can submit a claim with identifying details. Admins review and approve or reject claims.
 After approval, the relevant students can see each other's names and can see phone numbers only
 when the number owner has enabled **Share my phone for approved item handovers** in their profile.
-Phone numbers are never included on public item cards. The owner receives a 15-minute one-time
-handover code in notifications and shares it with the finder at the physical handover. The finder
-enters that code, and the owner separately confirms receipt; the item is marked returned only
-after both checks pass.
+Phone numbers are never included on public item cards. At handover, the owner confirms receipt and
+the finder confirms handing over the item; the item is marked returned only after both confirmations.
 
 ## Setup
 
@@ -146,7 +144,8 @@ Admins can edit a staff member's name and designation, and optionally set a new 
 - `POST /api/lost-found/found`
 - `GET /api/lost-found/lost`
 - `GET /api/lost-found/found`
-- `PUT /api/lost-found/:type/:id/review` (admin)
+- `PUT /api/lost-found/lost/:id/review` (admin)
+- `PUT /api/lost-found/found/:id/review` (admin)
 - `POST /api/lost-found/:type/:id/claims`
 - `GET /api/lost-found/claims/mine`
 - `GET /api/lost-found/claims` (admin)
